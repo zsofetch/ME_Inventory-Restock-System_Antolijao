@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Burp Inventory Management System</title>
+  <style>
+    body { font-family: Monospace, sans-serif; margin: 30px; color: #333; }
+    h1, h2 { margin-bottom: 5px; }
+    .container { display: flex;gap: 40px; margin-top: 20px; }
+    form { background: #f9f9f9; padding: 15px; border: 1px solid #ccc;  width: 280px;}
+    form div { margin-bottom: 12px;}
+    label {display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px;}
+    input { width: 90%;padding: 5px;  font-size: 14px;}
+    button { padding: 6px 12px;cursor: pointer;}
+    table {border-collapse: collapse;width: 100%;min-width: 600px; }
+    th, td {border: 1px solid #ddd; padding: 8px;text-align: left;}
+    th {background-color: #f2f2f2;}
+    .status {font-weight: bold; font-size: 12px;}
+    .error { color: red; font-weight: bold; }
+    .success { color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h1>Burp Inventory System</h1>
+  <hr>
+
+  <div class="container">
+    <div>
+      <h2>Add Product</h2>
+      <form id="productForm">
+        <div>
+           <label>Product name</label>
+         <input type="text" id="name" required>
+        </div>
+        <div>
+           <label>Category</label>
+        <input type="text" id="category" required>
+        </div>
+        <div>
+          <label>Price</label>
+         <input type="number" step="0.01" id="price" required>
+        </div>
+        <div>
+          <label>Stock</label>
+            <input type="number" id="stock" required>
+        </div>
+        <button type="submit">Submit</button>
+      </form>
+      <p id="msg"></p>
+    </div>
+
+    <div>
+      <h2>Current Inventory</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryList"></tbody>
+      </table>
+    </div>  
+  </div>
+ 
+   <script>
+    async function loadInventory() {
+      const res = await fetch('/api/products');
+      const items = await res.json();
+      const tbody = document.getElementById('inventoryList');
+      tbody.innerHTML = '';
+
+      items.forEach(item => {
+        tbody.innerHTML += `
+          <tr>
+         <td>${item.id}</td>
+          <td><strong>${item.product_name}</strong></td>
+          <td>${item.category}</td>
+          <td>₱${item.price}</td>
+         <td>${item.stock}</td>
+          <td class="status">${item.status}</td>
+          <td><button onclick="removeProduct(${item.id})">Delete</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    //for transparency, i checked a website and existing repos to follow the syntax for this part
+    //https://dev.to/alvinscode/how-to-retrieve-data-from-an-api-3dbp
+    //https://www.shecodes.io/athena/5253-writing-a-function-to-show-total-amount-with-price-and-quantity
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      msg.className = '';
+      msg.innerText = '';
+    
+      const payload = {
+        product_name: document.getElementById('name').value,
+        category: document.getElementById('category').value,
+        price: document.getElementById('price').value,
+        stock: document.getElementById('stock').value
+      };
+
+      //https://stackoverflow.com/questions/29775797/fetch-post-json-data
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      //https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+      if (!res.ok) {
+        msg.className = 'error'; msg.innerText = data.error;
+      } else {
+        msg.className = 'success'; msg.innerText = 'added!';
+        document.getElementById('productForm').reset();
+        loadInventory();
+      }
+    });
+
+    //website followed: https://mimo.org/glossary/javascript/async-await
+    async function removeProduct(id) {
+      if (confirm('remove item ' + id + '?')) {
+        await fetch('/api/products/' + id, { method: 'DELETE' });
+        loadInventory();
+      }
+    }
+
+    loadInventory();
+  </script>
+</body>
+</html>
